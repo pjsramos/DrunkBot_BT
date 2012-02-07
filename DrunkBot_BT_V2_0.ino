@@ -7,7 +7,7 @@ MeetAndroid meetAndroid;
 Servo myservoR;  // create servo object to control a servo 
 Servo myservoL;
 // a maximum of eight servo objects can be created 
-#define rightZero 86
+#define rightZero 88
 #define leftZero 87
 
 int velR = rightZero;
@@ -21,15 +21,15 @@ boolean isDance=false;
 void setup() 
 { 
   Serial.begin(9600);
-  myservoR.attach(9);  // attaches the servo on pin 9 to the servo object 
-  myservoL.attach(10);
+  myservoR.attach(10);  // attaches the servo on pin 9 to the servo object 
+  myservoL.attach(9);
 
   myservoR.write(velR);
   myservoL.write(velL);
   
   meetAndroid.registerFunction(compass, 'A');
   delay(300);
-  useSerial=Serial.available();
+  //useSerial=Serial.available();
 
 } 
 
@@ -55,14 +55,38 @@ void compass(byte flag, byte numOfValues)
   //meetAndroid.send(data[1]);
   //meetAndroid.send(data[2]);
   
-  if(data[0] > 5) {
-  meetAndroid.send("Left");
-    left();
-  } else if(data[0] < -5) {
-      meetAndroid.send("Right");
-    right();
-  } 
   
+  
+   
+  if(data[0] > 2) {
+    meetAndroid.send("<--|-- ");
+    int valDir = map((int)data[0], 2, 12, 0, 40);
+    
+    myservoR.write(rightZero-valDir);
+    myservoL.write(leftZero-valDir);
+    
+    meetAndroid.send(rightZero-valDir);
+    meetAndroid.send(leftZero-valDir);
+
+  } else if(data[0]  < -2) {
+      meetAndroid.send(" --|-->");
+        int valDir = map((int)data[0], -12, -2, 0, 40);
+    
+    myservoR.write(rightZero+valDir);
+    myservoL.write(leftZero+valDir);
+    
+    meetAndroid.send(rightZero+valDir);
+    meetAndroid.send(leftZero+valDir);
+  } else {
+    meetAndroid.send(" --|-- ");
+    myservoR.write(rightZero);
+    myservoL.write(leftZero);
+    
+    meetAndroid.send(rightZero);
+    meetAndroid.send(leftZero);
+  }
+
+  /*
     if(data[1] > 5) {
         meetAndroid.send("Front");
     front();
@@ -70,9 +94,10 @@ void compass(byte flag, byte numOfValues)
       meetAndroid.send("Back");
     back();
   } else {
-      meetAndroid.send("Stop ");
+      meetAndroid.send("Stop");
     stopM();
   }
+  */
   
 }
 
