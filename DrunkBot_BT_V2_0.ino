@@ -7,11 +7,25 @@ MeetAndroid meetAndroid;
 Servo myservoR;  // create servo object to control a servo 
 Servo myservoL;
 // a maximum of eight servo objects can be created 
-#define rightZero 88
-#define leftZero 87
+#define RIGHT_ZERO 88
+#define LEFT_ZERO 87
 
-int velR = rightZero;
-int velL = leftZero;
+#define PWM_MIN 0
+#define PWM_MAX 180
+
+#define COMP_MIN 3.0
+#define COMP_MAX 10.0
+
+#define X 0
+#define Y 1
+#define Z 2
+
+
+long timeout;
+float eixos[3];
+
+int velR = RIGHT_ZERO;
+int velL = LEFT_ZERO;
 int charrec=0;
 
 boolean useSerial=false;
@@ -42,63 +56,89 @@ void loop()
   //delay(100);
 
   meetAndroid.receive();
+  
+  andar();
+  
+  delay(2000);
 } 
 
 
 void compass(byte flag, byte numOfValues)
 {
-  // we use getInt(), since we know only data between 0 and 360 will be sent
- float data[numOfValues];
-  meetAndroid.getFloatValues(data);
-  //meetAndroid.send("arduino:");
-  //meetAndroid.send(data[0]);
-  //meetAndroid.send(data[1]);
-  //meetAndroid.send(data[2]);
-  
-  
-  
-   
-  if(data[0] > 2) {
-    meetAndroid.send("<--|-- ");
-    int valDir = map((int)data[0], 2, 12, 0, 40);
-    
-    myservoR.write(rightZero-valDir);
-    myservoL.write(leftZero-valDir);
-    
-    meetAndroid.send(rightZero-valDir);
-    meetAndroid.send(leftZero-valDir);
 
-  } else if(data[0]  < -2) {
-      meetAndroid.send(" --|-->");
-        int valDir = map((int)data[0], -12, -2, 0, 40);
-    
-    myservoR.write(rightZero+valDir);
-    myservoL.write(leftZero+valDir);
-    
-    meetAndroid.send(rightZero+valDir);
-    meetAndroid.send(leftZero+valDir);
-  } else {
-    meetAndroid.send(" --|-- ");
-    myservoR.write(rightZero);
-    myservoL.write(leftZero);
-    
-    meetAndroid.send(rightZero);
-    meetAndroid.send(leftZero);
-  }
-
-  /*
-    if(data[1] > 5) {
-        meetAndroid.send("Front");
-    front();
-  } else if(data[1] < -5) {
-      meetAndroid.send("Back");
-    back();
-  } else {
-      meetAndroid.send("Stop");
+  timeout = millis();
+  
+  meetAndroid.getFloatValues(eixos);
+  
+//  meetAndroid.send("X:");
+//  meetAndroid.send(eixos[X]);
+//  meetAndroid.send("Y:");
+//  meetAndroid.send(eixos[Y]);
+//  meetAndroid.send("Z:");
+//  meetAndroid.send(eixos[Z]);
+}
+  
+  
+void andar() {
+  
+  if(millis() - timeout > 2000) {
     stopM();
+  } else {
+    
+    int intensidadeY = convertToVelocity(Y);
+    int intensidadeX = convertToVelocity(X);
+    
+    meetAndroid.send("Conv X:");
+    meetAndroid.send(intensidadeX);
+    meetAndroid.send("Conv Y:");
+    meetAndroid.send(intensidadeY);
+    
+    
+    if(eixos[X] >= MIN) {
+      //Está indo para um dos lados também?
+      if (eixos[Y] >= MIN) {
+        amarino.send("frente-esquerda");
+        //frenteDireita(intensidadeX);
+        //frenteEsquerda(intensidadeXY());
+      } else if(eixos[Y] < -MIN) {
+        amarino.send("frente-direita");
+        //frenteDireita(intensidadeXY());
+        //frenteEsquerda(intensidadeX);
+      } else {
+        amarino.send("frente");
+        //frenteDireita(intensidadeX);
+        //frenteEsquerda(intensidadeX);
+      }
+    } else if(eixos[X] < -MIN) {
+      amarino.send("tras");
+      //trasDireita(intensidadeX);
+      //trasEsquerda(intensidadeX);
+    } else if (eixos[Y] < -MIN) {
+      amarino.send("esquerda");
+      //frenteDireita(0);
+      //frenteEsquerda(intensidadeY);
+    } else if(eixos[Y] >= MIN) {
+      amarino.send("direita");
+      //frenteDireita(intensidadeY);
+      //frenteEsquerda(0);
+    } else {
+      amarino.send("parar");
+      //parar();
+    }
   }
-  */
   
+}
+
+
+
+int convertToVelocity(int eixo) {
+  int intensidade = map(abs(eixos[eixo]), COMP_MIN, COMP_MAX, PWM_MIN, PWM_MAX);
+  if(intensidade > PWM_MAX) {
+    intensidade = PWM_MAX;
+  } else if(intensidade < PWM_MIN) {
+    intensidade = 0;
+  }
+  return intensidade;
 }
 
 void readChar() {
@@ -216,8 +256,8 @@ void left() {
 }
 
 void stopM() {
-  velR=rightZero;
-  velL=leftZero;
+  velR=RIGHT_ZERO;
+  velL=LEFT_ZERO;
   if (useSerial) {
     Serial.print("Stop=");
     Serial.print(velR);
