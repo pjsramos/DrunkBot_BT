@@ -6,44 +6,68 @@ MeetAndroid meetAndroid;
 
 Servo myservoR;  // create servo object to control a servo 
 Servo myservoL;
-// a maximum of eight servo objects can be created 
+
+#define RIGHT_SERVO_PIN 10
+#define LEFT_SERVO_PIN 9
+
+#define RED_LED_PIN 5
+#define GREEN_LED_PIN 6
+#define BLUE_LED_PIN 11
+
 #define RIGHT_ZERO 88
 #define LEFT_ZERO 87
 
-#define PWM_MIN 0
-#define PWM_MAX 180
+#define PWM_MIN 1
+#define PWM_MAX 20
 
-#define COMP_MIN 3.0
-#define COMP_MAX 10.0
+#define COMP_MIN 1.5
+#define COMP_MAX 9.0
 
-#define X 0
-#define Y 1
+#define X 1
+#define Y 0
 #define Z 2
 
 
 long timeout;
 float eixos[3];
 
-int velR = RIGHT_ZERO;
-int velL = LEFT_ZERO;
-int charrec=0;
-
-boolean useSerial=false;
-boolean isDance=false;
-
 
 void setup() 
 { 
-  Serial.begin(9600);
-  myservoR.attach(10);  // attaches the servo on pin 9 to the servo object 
-  myservoL.attach(9);
+   Serial.begin(9600);
+  myservoR.attach(RIGHT_SERVO_PIN);  // attaches the servo on pin 9 to the servo object 
+  myservoL.attach(LEFT_SERVO_PIN);
 
-  myservoR.write(velR);
-  myservoL.write(velL);
-  
+  stopM();
+
   meetAndroid.registerFunction(compass, 'A');
+
+  meetAndroid.registerFunction(phoneState, 'B');
+  
+  
+    // set all color leds as output pins
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  pinMode(BLUE_LED_PIN, OUTPUT);
+  
+  // just set all leds to high so that we see they are working well
+  digitalWrite(RED_LED_PIN, LOW);
+  digitalWrite(GREEN_LED_PIN, LOW);
+  digitalWrite(BLUE_LED_PIN, LOW);
   delay(300);
-  //useSerial=Serial.available();
+
+  front(10);
+  delay(300);
+  right(10);
+  delay(300);
+  left(10);
+  delay(300);
+  back(10);
+  delay(300);
+  
+  digitalWrite(RED_LED_PIN, HIGH);
+  digitalWrite(GREEN_LED_PIN, HIGH);
+  digitalWrite(BLUE_LED_PIN, HIGH);
 
 } 
 
@@ -56,10 +80,10 @@ void loop()
   //delay(100);
 
   meetAndroid.receive();
-  
-  andar();
-  
-  delay(2000);
+
+  run();
+
+  delay(20);
 } 
 
 
@@ -67,206 +91,178 @@ void compass(byte flag, byte numOfValues)
 {
 
   timeout = millis();
-  
+
   meetAndroid.getFloatValues(eixos);
-  
-//  meetAndroid.send("X:");
-//  meetAndroid.send(eixos[X]);
-//  meetAndroid.send("Y:");
-//  meetAndroid.send(eixos[Y]);
-//  meetAndroid.send("Z:");
-//  meetAndroid.send(eixos[Z]);
+
+  //  meetAndroid.send("X:");
+  //  meetAndroid.send(eixos[X]);
+  //  meetAndroid.send("Y:");
+  //  meetAndroid.send(eixos[Y]);
+  //  meetAndroid.send("Z:");
+  //  meetAndroid.send(eixos[Z]);
 }
-  
-  
-void andar() {
-  
+
+
+
   if(millis() - timeout > 2000) {
     stopM();
-  } else {
-    
-    int intensidadeY = convertToVelocity(Y);
-    int intensidadeX = convertToVelocity(X);
-    
+  } 
+  else {
+
+    int velY = convertToVelocity(Y);
+    int velX = convertToVelocity(X);
+/*
     meetAndroid.send("Conv X:");
-    meetAndroid.send(intensidadeX);
+    meetAndroid.send(velX);
     meetAndroid.send("Conv Y:");
-    meetAndroid.send(intensidadeY);
-    
-    
-    if(eixos[X] >= MIN) {
-      //Está indo para um dos lados também?
-      if (eixos[Y] >= MIN) {
-        amarino.send("frente-esquerda");
+    meetAndroid.send(velY);
+*/
+    //Est\u00e1 indo pra frente?
+    if(eixos[X] >= COMP_MIN) {
+      //Est\u00e1 indo para um dos lados tamb\u00e9m?
+      if (eixos[Y] >= COMP_MIN) {
+        meetAndroid.send("back-left");
         //frenteDireita(intensidadeX);
         //frenteEsquerda(intensidadeXY());
-      } else if(eixos[Y] < -MIN) {
-        amarino.send("frente-direita");
+      } 
+      else if(eixos[Y] < -COMP_MIN) {
+        meetAndroid.send("back-right");
         //frenteDireita(intensidadeXY());
         //frenteEsquerda(intensidadeX);
-      } else {
-        amarino.send("frente");
+      } 
+      else {
+        meetAndroid.send("back");
+        back(velX);
         //frenteDireita(intensidadeX);
         //frenteEsquerda(intensidadeX);
       }
-    } else if(eixos[X] < -MIN) {
-      amarino.send("tras");
-      //trasDireita(intensidadeX);
-      //trasEsquerda(intensidadeX);
-    } else if (eixos[Y] < -MIN) {
-      amarino.send("esquerda");
-      //frenteDireita(0);
-      //frenteEsquerda(intensidadeY);
-    } else if(eixos[Y] >= MIN) {
-      amarino.send("direita");
-      //frenteDireita(intensidadeY);
-      //frenteEsquerda(0);
-    } else {
-      amarino.send("parar");
-      //parar();
+    } 
+    else if(eixos[X] < -COMP_MIN) {
+      if (eixos[Y] >= COMP_MIN) {
+        meetAndroid.send("forward-left");
+        //frenteDireita(intensidadeX);
+        //frenteEsquerda(intensidadeXY());
+      } 
+      else if(eixos[Y] < -COMP_MIN) {
+        meetAndroid.send("forward-right");
+        //frenteDireita(intensidadeXY());
+        //frenteEsquerda(intensidadeX);
+      } 
+      else {
+        meetAndroid.send("forward");
+        front(velX);
+        //frenteDireita(intensidadeX);
+        //frenteEsquerda(intensidadeX);
+      }
+    } 
+    else {
+      if (eixos[Y] >= COMP_MIN) {
+        meetAndroid.send("left");
+        left(velY);
+        //frenteDireita(intensidadeX);
+        //frenteEsquerda(intensidadeXY());
+      } 
+      else if(eixos[Y] < -COMP_MIN) {
+        meetAndroid.send("right");
+        right(velY);
+        //frenteDireita(intensidadeXY());
+        //frenteEsquerda(intensidadeX);
+      }     
+      else {
+        stopM();
+      }
     }
-  }
-  
-}
 
+  }
+
+}
 
 
 int convertToVelocity(int eixo) {
-  int intensidade = map(abs(eixos[eixo]), COMP_MIN, COMP_MAX, PWM_MIN, PWM_MAX);
-  if(intensidade > PWM_MAX) {
-    intensidade = PWM_MAX;
-  } else if(intensidade < PWM_MIN) {
-    intensidade = 0;
+  int vel = map(abs(eixos[eixo]), COMP_MIN, COMP_MAX, PWM_MIN, PWM_MAX);
+  
+  if(vel > PWM_MAX) {
+    vel = PWM_MAX;
+  } 
+  else if(vel < PWM_MIN) {
+    vel = 0;
   }
-  return intensidade;
+  return vel;
 }
 
-void readChar() {
-  if (Serial.available()) {
-    // wait a bit for the entire message to arrive
-    //delay(100);
-    // clear the screen
-
-    while (Serial.available() > 0) {
-      // display each character to the LCD
-      charrec=Serial.read();
-      if(charrec==97) {
-        front();
-      } 
-      else if(charrec==100) {
-        back();
-      } 
-      else if(charrec==119) {
-        left();
-      } 
-      else if(charrec==115) {
-        right();
-      } 
-      else if(charrec==32) {
-        stopM();
-      } 
-      else {
-        Serial.print("char=");
-        Serial.println(charrec);
-      }
-    }
-  }
+void front(int vel) {
+  meetAndroid.send("-->");
+  meetAndroid.send((LEFT_ZERO+vel));
+  meetAndroid.send((RIGHT_ZERO-vel));
+  
+  myservoL.write(LEFT_ZERO+vel);
+  myservoR.write(RIGHT_ZERO-vel);
 }
 
-
-
-void dance() {
-  stopM();
-  delay(5000);
-  front();
-  delay(5000);
-  front();
-  delay(5000);
-  front();
-  delay(5000);
-  stopM();
-  delay(5000);
-  right();
-  right();
-  delay(5000);
-  stopM();
-  delay(5000);
-  left();
-  left();
-  delay(5000);
-  stopM();
-  back();
-  delay(5000);
-  back();
-  delay(5000);
-  stopM();
-  delay(5000);
+void back(int vel) {
+  meetAndroid.send("-->");
+  meetAndroid.send((LEFT_ZERO-vel));
+  meetAndroid.send((RIGHT_ZERO+vel));
+  
+  myservoL.write(LEFT_ZERO-vel);
+  myservoR.write(RIGHT_ZERO+vel);
 }
 
-void front() {
-  velR=velR-1;
-  velL=velL+1;
-  if (useSerial) {
-    Serial.print("Front=");
-    Serial.print(velR);
-    Serial.print("/");
-    Serial.println(velL);
-  }
-  myservoR.write(velR);
-  myservoL.write(velL);
-}
-
-void back() {
-  velR=velR+1;
-  velL=velL-1;
-  if (useSerial) {
-    Serial.print("Back=");
-    Serial.print(velR);
-    Serial.print("/");
-    Serial.println(velL);
-  }
-  myservoR.write(velR);
-  myservoL.write(velL);
-}
-
-void right() {
-  velR=velR+1;
-  velL=velL+1;
-  if (useSerial) {
-    Serial.print("Right=");
-    Serial.print(velR);
-    Serial.print("/");
-    Serial.println(velL);
-  }
-  myservoR.write(velR);
-  myservoL.write(velL);
-}
-
-void left() {
-  velR=velR-1;
-  velL=velL-1;
-  if (useSerial) {
-    Serial.print("Left=");
-    Serial.print(velR);
-    Serial.print("/");
-    Serial.println(velL);
-  }
-  myservoR.write(velR);
-  myservoL.write(velL);
-}
 
 void stopM() {
-  velR=RIGHT_ZERO;
-  velL=LEFT_ZERO;
-  if (useSerial) {
-    Serial.print("Stop=");
-    Serial.print(velR);
-    Serial.print("/");
-    Serial.println(velL);
-  }
-  myservoR.write(velR);
-  myservoL.write(velL);
+  myservoR.write(RIGHT_ZERO);
+  myservoL.write(LEFT_ZERO);
 }
+
+
+void left(int vel) {
+  meetAndroid.send("-->");
+  meetAndroid.send((LEFT_ZERO+vel));
+  meetAndroid.send((RIGHT_ZERO-vel));
+  
+  myservoL.write(LEFT_ZERO-(vel/2));
+  myservoR.write(RIGHT_ZERO-(vel/2));
+}
+
+void right(int vel) {
+  meetAndroid.send("-->");
+  meetAndroid.send((LEFT_ZERO+vel));
+  meetAndroid.send((RIGHT_ZERO-vel));
+  
+  myservoL.write(LEFT_ZERO+(vel/2));
+  myservoR.write(RIGHT_ZERO+(vel/2));
+}
+
+
+void phoneState(byte flag, byte numOfValues)
+{
+  int val = meetAndroid.getInt();
+  if (val==0) {
+     meetAndroid.send("IDLE");
+    analogWrite(RED_LED_PIN, 255 );
+    analogWrite(GREEN_LED_PIN, 255);
+    analogWrite(BLUE_LED_PIN, 100);
+  } else if (val==1){
+     meetAndroid.send("RINGING");
+    analogWrite(RED_LED_PIN, 100 );
+    analogWrite(GREEN_LED_PIN, 255);
+    analogWrite(BLUE_LED_PIN, 255);
+  } else if (val==2){
+     meetAndroid.send("OFFHOOK");
+    analogWrite(RED_LED_PIN, 255 );
+    analogWrite(GREEN_LED_PIN, 100);
+    analogWrite(BLUE_LED_PIN, 255);
+  } else {
+     meetAndroid.send("OFF");
+    analogWrite(RED_LED_PIN, 255 );
+    analogWrite(GREEN_LED_PIN, 255);
+    analogWrite(BLUE_LED_PIN, 255);
+  }
+}
+
+
+
+
 
 
 
