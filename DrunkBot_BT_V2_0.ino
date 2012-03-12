@@ -103,7 +103,7 @@ void compass(byte flag, byte numOfValues)
 }
 
 
-
+void run() {
   if(millis() - timeout > 2000) {
     stopM();
   } 
